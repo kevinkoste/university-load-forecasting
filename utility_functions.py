@@ -24,7 +24,7 @@ def add_hours_before(df_in,hours_before):
     return df
 
 
-def snapshotplot(df, column, start, stop):
+def plot_feature(df, column, start, stop):
     """
     Plots all features for a snapshot between two indices
     
@@ -45,6 +45,28 @@ def snapshotplot(df, column, start, stop):
     plt.xlabel('Time')
     plt.setp(plot, markersize=5)
     plt.show()
+    
+    
+def plot_all(df, start, stop):
+    """
+    Plots all features for a snapshot between two indices
+    
+    df: DataFrame with datetime[ns] index
+    start: str of index label at which to start plot
+    stop: str of index label at which to end plot
+    """
+    
+    start_int = df.index.get_loc(start)
+    stop_int = df.index.get_loc(stop)
+
+    snapshot = df.iloc[start_int:stop_int]
+
+    fig = plt.figure(figsize=(20, 60), dpi= 100, facecolor='w')
+
+    for i in range(1,len(snapshot.columns)+1):
+        ax = fig.add_subplot(len(snapshot.columns),3,i)
+        ax.title.set_text(snapshot.columns[i-1])
+        ax.plot(snapshot[snapshot.columns[i-1]])
     
 
 # def plotweather(df, start, stop):
