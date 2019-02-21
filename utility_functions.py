@@ -47,7 +47,7 @@ def plot_feature(df, column, start, stop):
     plt.show()
     
     
-def plot_all(df, start, stop):
+def plot_all(df, start, stop, **keyword_parameters):
     """
     Plots all features for a snapshot between two indices
     
@@ -55,18 +55,21 @@ def plot_all(df, start, stop):
     start: str of index label at which to start plot
     stop: str of index label at which to end plot
     """
-    
+    if ('style' in keyword_parameters):
+        style = keyword_parameters['style']
+    else:
+        style = 'r-'
     start_int = df.index.get_loc(start)
     stop_int = df.index.get_loc(stop)
 
     snapshot = df.iloc[start_int:stop_int]
 
-    fig = plt.figure(figsize=(20, 60), dpi= 100, facecolor='w')
+    fig = plt.figure(figsize=(20, 60), dpi= 100,facecolor='w')
 
     for i in range(1,len(snapshot.columns)+1):
         ax = fig.add_subplot(len(snapshot.columns),3,i)
         ax.title.set_text(snapshot.columns[i-1])
-        ax.plot(snapshot[snapshot.columns[i-1]])
+        ax.plot(snapshot[snapshot.columns[i-1]],style)
     
 
 # def plotweather(df, start, stop):
