@@ -76,20 +76,27 @@ def plot_all(df, start, stop, **keyword_parameters):
 
 def gap_indicator(df_in,gap_length):
     """
-    Returns a DataFrame with bool columns indicating gaps longer than gap_length hours in df_in
+    Returns a bool DataFrame indicating gaps longer than gap_length hours in df_in
     
     df: DataFrame to be checked, with datetime[ns] index
+    gap_length: int maximum allowable gap length in hours
     """
+    fward = (df_in.notna()
+                  .rolling(gap_length,min_periods=1)
+                  .sum()
+                  .astype(bool)
+            )
     
-    df = (df_in.iloc[::-1]
-               .notna()
-               .rolling(gap_length,min_periods=1)
-               .sum()
-               .iloc[::-1]
-               .astype(bool)
-         )
     
-    return df
+    bward = (df_in.iloc[::-1]
+                  .notna()
+                  .rolling(gap_length,min_periods=1)
+                  .sum()
+                  .iloc[::-1]
+                  .astype(bool)
+            )
+    
+    return fward & bward
     
 
 def gap_check(df,gap_indicator_column):
