@@ -45,6 +45,7 @@ def plot_feature(df, column, start, stop):
     plt.xlabel('Time')
     plt.setp(plot, markersize=5)
     plt.show()
+    return
     
     
 def plot_all(df, start, stop, **keyword_parameters):
@@ -64,53 +65,48 @@ def plot_all(df, start, stop, **keyword_parameters):
 
     snapshot = df.iloc[start_int:stop_int]
 
-    fig = plt.figure(figsize=(20, 60), dpi= 100,facecolor='w')
+    fig = plt.figure(figsize=(20, 5*len(snapshot.columns)),dpi= 80,facecolor='w')
 
     for i in range(1,len(snapshot.columns)+1):
         ax = fig.add_subplot(len(snapshot.columns),3,i)
         ax.title.set_text(snapshot.columns[i-1])
         ax.plot(snapshot[snapshot.columns[i-1]],style)
-    
-
-# def plotweather(df, start, stop):
-    
-#     """
-#     Plots all features for a snapshot between two indices
-#     df: DataFrame with datetime[ns] index
-#     start: str of index label at which to start plot
-#     stop: str of index label at which to end plot
-#     """
-    
-#     start_int = df.index.get_loc(start)
-#     stop_int = df.index.get_loc(stop)
-
-#     snapshot = df.iloc[start_int:stop_int]
-    
-#     fig, (p1,p2,p3,p4,p5,p6,p7,p8,p9) = plt.subplots(nrows=3,ncols=3,sharex=True)
-        
-#     p1.scatter(x=snapshot.index,y=snapshot['temp'])
-#     p1.set_title('temp')
-#     p1.set_yaxis('Temperature [K]')
-    
-#     p2.scatter(x=snapshot.index,y=snapshot['t_min'])
-#     p2.set_title('t_max')
-#     p2.set_yaxis('Temperature [K]')
+    return
 
 
-def gap_check(df,gap_indicator):
+def gap_indicator(df_in,gap_length):
     """
-    a snippet i wrote that finds and prints the integer indices of gaps given by a gap indicator
+    Returns a DataFrame with bool columns indicating gaps longer than gap_length hours in df_in
+    
+    df: DataFrame to be checked, with datetime[ns] index
+    """
+    
+    df = (df_in.iloc[::-1]
+               .notna()
+               .rolling(gap_length,min_periods=1)
+               .sum()
+               .iloc[::-1]
+               .astype(bool)
+         )
+    
+    return df
+    
+
+def gap_check(df,gap_indicator_column):
+    """
+    Prints integer indices of starts and ends of all gaps indicated by the gap_indicator_column
+    
     df: DataFrame with datetime[ns] index
-    gap_indicator: str giving name of column indicating gaps using True or False
+    gap_indicator_column: str giving name of the column that indicates gaps using True or False
     """
     
     print('start | end')
     
     for i in range(len(df)):
-        if (df['impute_ok'][i-1]==True) & (df['impute_ok'][i]==False):
+        if (df[gap_indicator_column][i-1]==True) & (df[gap_indicator_column][i]==False):
             gap_start=i
             for j in range(i,len(df)):
-                if df['impute_ok'][j]==True:
+                if df[gap_indicator_column][j]==True:
                     gap_end=j
                     break
             print(gap_start, gap_end)
@@ -142,8 +138,31 @@ def gap_check(df,gap_indicator):
 #     plt.plot(range(len(scaled['temp'][4700:4900])),scaled['temp'][4700:4900])
 
 #     # plt.plot(range(100),transform[0:100])
+
+
+
+# def plotweather(df, start, stop):
+#     """
+#     Plots all features for a snapshot between two indices
+#     df: DataFrame with datetime[ns] index
+#     start: str of index label at which to start plot
+#     stop: str of index label at which to end plot
+#     """
     
+#     start_int = df.index.get_loc(start)
+#     stop_int = df.index.get_loc(stop)
+
+#     snapshot = df.iloc[start_int:stop_int]
     
+#     fig, (p1,p2,p3,p4,p5,p6,p7,p8,p9) = plt.subplots(nrows=3,ncols=3,sharex=True)
+        
+#     p1.scatter(x=snapshot.index,y=snapshot['temp'])
+#     p1.set_title('temp')
+#     p1.set_yaxis('Temperature [K]')
+    
+#     p2.scatter(x=snapshot.index,y=snapshot['t_min'])
+#     p2.set_title('t_max')
+#     p2.set_yaxis('Temperature [K]')
     
     
     
