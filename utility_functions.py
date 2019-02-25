@@ -1,54 +1,76 @@
 import pandas as pd
 import numpy as np
-import scipy as sp
-import scipy.optimize
+from scipy import optimize
 
 import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
-def fit_sin(tt, yy):
-    """
-    Fits sinusoid to the input time sequence
-    Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
-    """
-    tt = np.array(tt)
-    yy = np.array(yy)
-    ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
-    Fyy = abs(np.fft.fft(yy))
-    guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
-    guess_amp = np.std(yy) * 2.**0.5
-    guess_offset = np.mean(yy)
-    guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
 
-    def sinfunc(t, A, w, p, c):  return A * np.sin(w*t + p) + c
-    popt, pcov = scipy.optimize.curve_fit(sinfunc, tt, yy, p0=guess)
+def sine_fit(df,column,start,end):
+    """
+    Fits a sinusoid to evenly-spaced time series data
+    
+    df: DataFrame with datetime[ns] index
+    column: str name of column in question
+    start: int index location of first value in the impute range
+    end: int index location of last value in the impute range
+    Return fitting parameter 'fitfunc'
+    """
+    y = df[column][start:end].values
+    t = np.arange(end-start)
+    
+    f = np.fft.fftfreq(len(t), (t[1]-t[0]))
+    Fy = abs(np.fft.fft(y))
+    
+    guess_freq = abs(f[np.argmax(Fy[1:])+1])
+    guess_amp = np.std(y) * 2.**0.5
+    guess_offset = np.mean(y)
+    guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
+    
+    def sine(x, A, w, p, c):  return A * np.sin(w*x + p) + c
+    
+    popt, pcov = optimize.curve_fit(sine, t, y, p0=guess)
     A, w, p, c = popt
     f = w/(2.*np.pi)
-    fitfunc = lambda t: A * np.sin(w*t + p) + c
-    return {"amp":A, "omega":w, "phase":p, "offset":c, "freq":f, "period":1./f, "fitfunc":fitfunc, "maxcov":np.max(pcov), "rawres": (guess,popt,pcov)}
+    fit_function = lambda x: A * np.sin(w*x + p) + c
+    
+    return {'fit':fit_function,'amp':A,'omega':w,'phase':p,'offset':c,'freq':f}
 
 
-def sinusoid_impute(df,):
+def sine_impute(df_in,column):
     """
-    Fits a sinusoidal curve to time-series data
-    Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
+    Imputes all gaps using a least-squares optimized sinusoidal fit function
+    TODO: figure out a more logical flow of the various gap functions...
+          remove the need for that 6... 
+    
+    df_in: DataFrame to which the target column belongs
+    column: int index of column to be imputed
     """
-    tt = np.array(tt)
-    yy = np.array(yy)
-    ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
-    Fyy = abs(np.fft.fft(yy))
-    guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
-    guess_amp = np.std(yy) * 2.**0.5
-    guess_offset = np.mean(yy)
-    guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
+    df_out = df_in.copy(deep=True)
+    gaps = column_gaps(df_in,df_in.columns[column],6)
 
-    def sinfunc(t, A, w, p, c):  return A * np.sin(w*t + p) + c
-    popt, pcov = scipy.optimize.curve_fit(sinfunc, tt, yy, p0=guess)
-    A, w, p, c = popt
-    f = w/(2.*np.pi)
-    fitfunc = lambda t: A * np.sin(w*t + p) + c
-    return {"amp":A, "omega":w, "phase":p, "offset":c, "freq":f, "period":1./f, "fitfunc":fitfunc, "maxcov":np.max(pcov), "rawres": (guess,popt,pcov)}
+    for i in gaps.index:
+
+        data_start_index = gaps.start[i] - 2*gaps.length[i]-1
+        data_end_index = gaps.start[i]-1
+        impute_start_index = gaps.start[i]
+        impute_end_index = gaps.end[i]
+        # print(gaps.start[i])
+        # print(gaps.end[i])
+
+        x_start = 0
+        x_end = data_end_index - data_start_index
+        x_impute_start = x_end+1
+        x_impute_end = impute_end_index - data_start_index
+
+        fit_function = sine_fit(df_in,df_in.columns[column],data_start_index,data_end_index)
+        
+        imputed_values = fit_function['fit'](np.arange(x_impute_start,x_impute_end))
+        # print(imputed_values)
+
+        df_out.iloc[gaps.start[i]:gaps.end[i],[column]] = pd.DataFrame(imputed_values).values
+    return df_out
 
 
 def add_hours_before(df_in,hours_before):
@@ -59,7 +81,6 @@ def add_hours_before(df_in,hours_before):
     hours_before: array of the previous hours to consider; e.g. [16,17,18] or np.arange(1,25)
     returns: df with appropriate columns added
     """
-
     df = df_in.copy(deep=True)
     for i in hours_before:
         for j in range(len(df_in.columns)):
@@ -67,16 +88,20 @@ def add_hours_before(df_in,hours_before):
     return df
 
 
-def plot_feature(df, column, start, stop):
+def plot_feature(df, column, start, stop, **keyword_parameters):
     """
     Plots all features for a snapshot between two indices
     
     df: DataFrame with datetime[ns] index
-    column: str with column name -> eventually remove and plot all features as subplots
+    column: str with column name
     start: str of index label at which to start plot
     stop: str of index label at which to end plot
     """
-    
+    if ('ylabel' in keyword_parameters):
+        ylabel = keyword_parameters['ylabel']
+    else:
+        ylabel = ''
+        
     start_int = df.index.get_loc(start)
     stop_int = df.index.get_loc(stop)
 
@@ -84,8 +109,9 @@ def plot_feature(df, column, start, stop):
 
     plot = plt.plot(snapshot.index, snapshot[column],'ro')
 
-    plt.ylabel('generic ylabel')
-    plt.xlabel('Time')
+    plt.ylabel(ylabel)
+    plt.xlabel('')
+    plt.xticks(rotation=20)
     plt.setp(plot, markersize=5)
     plt.show()
     return
@@ -103,6 +129,7 @@ def plot_all(df, start, stop, **keyword_parameters):
         style = keyword_parameters['style']
     else:
         style = 'r-'
+        
     start_int = df.index.get_loc(start)
     stop_int = df.index.get_loc(stop)
 
@@ -117,8 +144,80 @@ def plot_all(df, start, stop, **keyword_parameters):
     return
 
 
-def gap_indicator(df_in,gap_length):
+def column_gaps(df_in,column,max_length):
     """
+    Returns DataFrame indicating the start, end and length of gaps in one column of a DataFrame
+    This is a handy combination of two other utility functions: gap_finder and gaps_as_df
+    
+    df_in: DataFrame to which the target column belongs
+    column: str name of column to be checked
+    max_length: int maximum length of gaps to be ignored
+    """
+    bool_gaps = gap_finder(df_in,column,max_length)
+    return gaps_as_df(bool_gaps,column)
+
+
+
+def gap_finder(df_in,column,max_length):
+    """
+    SLOW LOOP-BASED, could not find a quicker array/arithmetic-based solution
+    Returns a bool DataFrame indicating gaps longer than gap_length hours in column of df_in
+    
+    df: DataFrame to be checked, with datetime[ns] index
+    column: str name of column to be modified
+    max_length: int maximum allowable gap length in hours
+    """
+    df_out = df_in.copy(deep=True)
+    df_out[:] = True
+
+    df = df_in.notna()
+    
+    for i in range(len(df)):
+            if (df[column][i-1]==True) & (df[column][i]==False):
+                gap_start=i
+                for j in range(i,len(df)):
+                    if df[column][j]==True:
+                        gap_end=j
+                        break
+                if gap_end-gap_start > max_length:
+                    df_out[column][i:j] = False
+
+    return df_out
+
+
+def gaps_as_df(gap_indicator,column):
+    """
+    Returns DataFrame indicating the start, end and length of gaps in gap_indicator
+    
+    gap_indicator: DataFrame to be checked, with datetime[ns] index
+    column: int maximum allowable gap length in hours
+    """
+    gaps_list = []
+    
+    for i in range(len(gap_indicator[column])):
+        if (gap_indicator[column][i-1]==True) & (gap_indicator[column][i]==False):
+            dict1 = {}
+            for j in range(i,len(gap_indicator[column])):
+                if gap_indicator[column][j]==True:
+                    break
+            dict1.update({'start': i,'end': j,'length': j-i}) 
+            gaps_list.append(dict1)
+
+    return pd.DataFrame(gaps_list)[['start','end','length']]
+
+
+
+
+# -------------------------------------------------------------------------------------------
+# The following functions are not currently being used in any pipelines, but may be revisited
+# -------------------------------------------------------------------------------------------
+
+
+
+
+def gap_finder_broken(df_in,gap_length):
+    """
+    BROKEN, cannot handle gaps shorter than 1.5*gap+length
     Returns a bool DataFrame indicating gaps longer than gap_length hours in df_in
     
     df: DataFrame to be checked, with datetime[ns] index
@@ -140,55 +239,36 @@ def gap_indicator(df_in,gap_length):
             )
     
     return fward & bward
-    
 
-def gap_check(df,gap_indicator_column):
+
+def gap_finder_wshift(df_in,gap_length):
     """
-    Prints integer indices of starts and ends of all gaps indicated by the gap_indicator_column
-    
-    df: DataFrame with datetime[ns] index
-    gap_indicator_column: str giving name of the column that indicates gaps using True or False
+    trying to fix short gap problem using bitwise operators.. failing
     """
+    df = df_in.notna()
+    return (df | df.shift(-1) | df.shift(-2) | df.shift(-3)) & (df | df.shift(1) | df.shift(2) | df.shift(3))    
     
-    print('start | end')
-    
-    for i in range(len(df)):
-        if (df[gap_indicator_column][i-1]==True) & (df[gap_indicator_column][i]==False):
-            gap_start=i
-            for j in range(i,len(df)):
-                if df[gap_indicator_column][j]==True:
-                    gap_end=j
-                    break
-            print(gap_start, gap_end)
-        
 
 
-# def fourier_impute(XXX args)
+
+# def print_gaps(df,gap_indicator_column):
 #     """
-#     all the code I tried to use to implement fourier transform :( need help desperately
+#     Prints integer indices of starts and ends of all gaps indicated by the gap_indicator_column
+    
+#     df: DataFrame with datetime[ns] index
+#     gap_indicator_column: str giving name of the column that indicates gaps using True or False
 #     """
     
-#     initial = scaled['temp'].iloc[0:4799]
-
-#     transform = fftpack.rfft(initial)
-
-#     complete = np.append(transform,np.array([np.median(transform)]*43))
-
-#     recons = fftpack.irfft(complete)
-
-#     # complete = np.append(weather['temp'].iloc[0:4799],np.array([weather['temp'].iloc[0:4799].median()]*43))
-#     # weather['temp'].iloc[4500:4799].median()
-#     # transform = fftpack.rfft(complete)
-#     # reconstructed = fftpack.irfft(transform)
-
-#     plt.plot(range(len(recons[4700:4842])),recons[4700:4842])
-
-#     plt.plot(range(len(initial[4700:4799])),initial[4700:4799])
-
-#     plt.plot(range(len(scaled['temp'][4700:4900])),scaled['temp'][4700:4900])
-
-#     # plt.plot(range(100),transform[0:100])
-
+#     print('start | end')
+    
+#     for i in range(len(df)):
+#         if (df[gap_indicator_column][i-1]==True) & (df[gap_indicator_column][i]==False):
+#             gap_start=i
+#             for j in range(i,len(df)):
+#                 if df[gap_indicator_column][j]==True:
+#                     gap_end=j
+#                     break
+#             print(gap_start, gap_end)
 
 
 # def plotweather(df, start, stop):
@@ -215,4 +295,25 @@ def gap_check(df,gap_indicator_column):
 #     p2.set_yaxis('Temperature [K]')
     
     
-    
+# def fit_sin(tt, yy):
+#     """
+#     This is the original fit_sin function from stackoverflow
+#
+#     Fits sinusoid to the input time sequence
+#     Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
+#     """
+#     tt = np.array(tt)
+#     yy = np.array(yy)
+#     ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
+#     Fyy = abs(np.fft.fft(yy))
+#     guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
+#     guess_amp = np.std(yy) * 2.**0.5
+#     guess_offset = np.mean(yy)
+#     guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
+
+#     def sinfunc(t, A, w, p, c):  return A * np.sin(w*t + p) + c
+#     popt, pcov = scipy.optimize.curve_fit(sinfunc, tt, yy, p0=guess)
+#     A, w, p, c = popt
+#     f = w/(2.*np.pi)
+#     fitfunc = lambda t: A * np.sin(w*t + p) + c
+#     return {"amp":A, "omega":w, "phase":p, "offset":c, "freq":f, "period":1./f, "fitfunc":fitfunc, "maxcov":np.max(pcov), "rawres": (guess,popt,pcov)}
