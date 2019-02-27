@@ -88,10 +88,13 @@ def add_hours_before(df_in,hours_before):
     return df
 
 
-def date_features(df, label=None):
+def date_features(df_in, label=None):
     """
     Creates time series features from datetime index
     """
+    df = df_in.copy(deep=True)
+    df = df.drop(df.columns,axis=1)
+    
     df['date'] = df.index
     df['hour'] = df['date'].dt.hour
     df['dayofweek'] = df['date'].dt.dayofweek
@@ -152,16 +155,22 @@ def plot_all(df, start, stop, **keyword_parameters):
     else:
         style = 'r-'
         
+    if ('ylabel' in keyword_parameters):
+        ylabel = keyword_parameters['ylabel']
+    else:
+        ylabel = ''
+        
     start_int = df.index.get_loc(start)
     stop_int = df.index.get_loc(stop)
 
-    snapshot = df.iloc[start_int:stop_int]
+    snapshot = df.iloc[start_int:stop_int+1]
 
     fig = plt.figure(figsize=(20, 5*len(snapshot.columns)),dpi= 80,facecolor='w')
 
     for i in range(1,len(snapshot.columns)+1):
         ax = fig.add_subplot(len(snapshot.columns),3,i)
         ax.title.set_text(snapshot.columns[i-1])
+        ax.set_ylabel(str(ylabel))
         ax.plot(snapshot[snapshot.columns[i-1]],style)
     return
 
@@ -243,6 +252,16 @@ def limited_impute(series,limit,**keyword_parameters):
 
     return df_out[df.columns[0]]
 
+
+def mean_absolute_percentage_error(y_true, y_pred): 
+    """
+    Calculates MAPE given y_true and y_pred
+    
+    y_true: array-like actual values
+    y_pred: array-like predicted values
+    """
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 
 # -------------------------------------------------------------------------------------------
