@@ -96,7 +96,7 @@ def date_features(df_in, label=None):
     df = df.drop(df.columns,axis=1)
     
     df['date'] = df.index
-    df['hour'] = df['date'].dt.hour
+    df['hourofday'] = df['date'].dt.hour
     df['dayofweek'] = df['date'].dt.dayofweek
     df['quarter'] = df['date'].dt.quarter
     df['month'] = df['date'].dt.month
@@ -105,7 +105,7 @@ def date_features(df_in, label=None):
     df['dayofmonth'] = df['date'].dt.day
     df['weekofyear'] = df['date'].dt.weekofyear
     
-    X = df[['hour','dayofweek','quarter','month','year',
+    X = df[['hourofday','dayofweek','quarter','month','year',
            'dayofyear','dayofmonth','weekofyear']]
     if label:
         y = df[label]
