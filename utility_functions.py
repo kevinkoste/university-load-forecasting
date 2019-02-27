@@ -166,75 +166,88 @@ def plot_all(df, start, stop, **keyword_parameters):
     return
 
 
-def column_gaps(df_in,column,max_length):
+def gaps(series,**keyword_parameters):
     """
-    Returns DataFrame indicating the start, end and length of gaps in one column of a DataFrame
-    This is a handy combination of two other utility functions: gap_finder and gaps_as_df
+    Returns DataFrame indicating start, end, and length of gaps longer than limit
     
-    df_in: DataFrame to which the target column belongs
-    column: str name of column to be checked
-    max_length: int maximum length of gaps to be ignored
+    series: Series/column to be checked, with datetime[ns] index
+    gap_length: int maximum allowable gap length in hours
     """
-    bool_gaps = gap_finder(df_in,column,max_length)
-    return gaps_as_df(bool_gaps,column)
-
-
-
-def gap_finder(df_in,column,max_length):
-    """
-    SLOW LOOP-BASED, could not find a quicker array/arithmetic-based solution
-    Returns a bool DataFrame indicating gaps longer than gap_length hours in column of df_in
+    if ('limit' in keyword_parameters):
+        limit = keyword_parameters['limit']
+    else:
+        limit=0
     
-    df: DataFrame to be checked, with datetime[ns] index
-    column: str name of column to be modified
-    max_length: int maximum allowable gap length in hours
-    """
-    df_out = df_in.copy(deep=True)
-    df_out[:] = True
-
-    df = df_in.notna()
-    
-    for i in range(len(df)):
-            if (df[column][i-1]==True) & (df[column][i]==False):
-                gap_start=i
-                for j in range(i,len(df)):
-                    if df[column][j]==True:
-                        gap_end=j
-                        break
-                if gap_end-gap_start > max_length:
-                    df_out[column][i:j] = False
-
-    return df_out
-
-
-def gaps_as_df(gap_indicator,column):
-    """
-    Returns DataFrame indicating the start, end and length of gaps in gap_indicator
-    
-    gap_indicator: DataFrame to be checked, with datetime[ns] index
-    column: int maximum allowable gap length in hours
-    """
+    nans = series.notna()
     gaps_list = []
     
-    for i in range(len(gap_indicator[column])):
-        if (gap_indicator[column][i-1]==True) & (gap_indicator[column][i]==False):
+    for i in range(len(nans)):
+        if (nans[i-1] == True) & (nans[i] == False):
             dict1 = {}
-            for j in range(i,len(gap_indicator[column])):
-                if gap_indicator[column][j]==True:
+            for j in range(i,len(nans)):
+                if nans[j]==True:
                     break
-            dict1.update({'start': i,'end': j,'length': j-i}) 
-            gaps_list.append(dict1)
+            if j-i > limit:
+                dict1.update({'start_int':i, 'end_int':j, 'length':j-i, 'start':nans.index[i],'end':nans.index[j]}) 
+                gaps_list.append(dict1)
+                
+    if gaps_list == []:
+        return pd.DataFrame(columns=['start_int','end_int','length','start','end'])
+    else:
+        return pd.DataFrame(gaps_list)[['start_int','end_int','length','start','end']]
 
-    return pd.DataFrame(gaps_list)[['start','end','length']]
+def limited_impute(series,limit,**keyword_parameters):
+    """
+    Returns Series with gaps shorter than the limit interpolated based on the method given
+    
+    series: Series/column to be checked, with datetime[ns] index
+    limit: int maximum gap length to be interpolated, in hours
+    """
+    if ('method' in keyword_parameters):
+        method = keyword_parameters['method']
+    else:
+        method='linear'
 
+    # this is an implementation of the gaps function within this function, to avoid that dependency
+    nans = series.notna()
+    gaps_list = []
+    
+    for i in range(len(nans)):
+        if (nans[i-1] == True) & (nans[i] == False):
+            dict1 = {}
+            for j in range(i,len(nans)):
+                if nans[j]==True:
+                    break
+            if j-i > limit:
+                dict1.update({'start_int':i, 'end_int':j, 'length':j-i, 'start':nans.index[i],'end':nans.index[j]}) 
+                gaps_list.append(dict1)
+     
+    if gaps_list == []:
+        gaps =  pd.DataFrame(columns=['start_int','end_int','length','start','end'])
+    else:
+        gaps =  pd.DataFrame(gaps_list)[['start_int','end_int','length','start','end']]
+        
+    # this is the start of the interpolation section
+    df = pd.DataFrame(series)
+    df['range'] = np.arange(len(df))
+
+    exclude = np.array([])
+
+    for i in range(len(gaps)):
+        temp = np.arange(gaps['start_int'][i],gaps['end_int'][i])
+        exclude = np.append(exclude,temp).astype(int)
+
+    df_out = (df.mask(df['range'].isin(exclude),df.interpolate(method=method,inplace=True))
+                .astype(float)
+                .drop(labels='range',axis='columns'))
+
+    return df_out[df.columns[0]]
 
 
 
 # -------------------------------------------------------------------------------------------
 # The following functions are not currently being used in any pipelines, but may be revisited
 # -------------------------------------------------------------------------------------------
-
-
 
 
 def gap_finder_broken(df_in,gap_length):
@@ -271,8 +284,70 @@ def gap_finder_wshift(df_in,gap_length):
     return (df | df.shift(-1) | df.shift(-2) | df.shift(-3)) & (df | df.shift(1) | df.shift(2) | df.shift(3))    
     
 
+    
+# def column_gaps(df_in,column,max_length):
+#     """
+#     Returns DataFrame indicating the start, end and length of gaps in one column of a DataFrame
+#     This is a handy combination of two other utility functions: gap_finder and gaps_as_df
+    
+#     df_in: DataFrame to which the target column belongs
+#     column: str name of column to be checked
+#     max_length: int maximum length of gaps to be ignored
+#     """
+#     bool_gaps = gap_finder(df_in,column,max_length)
+#     return gaps_as_df(bool_gaps,column)
 
 
+
+# def gap_finder(df_in,column,max_length):
+#     """
+#     SLOW LOOP-BASED, could not find a quicker array/arithmetic-based solution
+#     Returns a bool DataFrame indicating gaps longer than gap_length hours in column of df_in
+    
+#     df: DataFrame to be checked, with datetime[ns] index
+#     column: str name of column to be modified
+#     max_length: int maximum allowable gap length in hours
+#     """
+#     df_out = df_in.copy(deep=True)
+#     df_out[:] = True
+
+#     df = df_in.notna()
+    
+#     for i in range(len(df)):
+#             if (df[column][i-1]==True) & (df[column][i]==False):
+#                 gap_start=i
+#                 for j in range(i,len(df)):
+#                     if df[column][j]==True:
+#                         gap_end=j
+#                         break
+#                 if gap_end-gap_start > max_length:
+#                     df_out[column][i:j] = False
+
+#     return df_out
+
+
+# def gaps_as_df(gap_indicator,column):
+#     """
+#     Returns DataFrame indicating the start, end and length of gaps in gap_indicator
+    
+#     gap_indicator: DataFrame to be checked, with datetime[ns] index
+#     column: int maximum allowable gap length in hours
+#     """
+#     gaps_list = []
+    
+#     for i in range(len(gap_indicator[column])):
+#         if (gap_indicator[column][i-1]==True) & (gap_indicator[column][i]==False):
+#             dict1 = {}
+#             for j in range(i,len(gap_indicator[column])):
+#                 if gap_indicator[column][j]==True:
+#                     break
+#             dict1.update({'start': i,'end': j,'length': j-i}) 
+#             gaps_list.append(dict1)
+
+#     return pd.DataFrame(gaps_list)[['start','end','length']]
+    
+    
+    
 # def print_gaps(df,gap_indicator_column):
 #     """
 #     Prints integer indices of starts and ends of all gaps indicated by the gap_indicator_column
