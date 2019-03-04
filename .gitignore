@@ -1,5 +1,4 @@
 # Specific files to ignore
-data/
 archive/
 
 # Byte-compiled / optimized / DLL files
