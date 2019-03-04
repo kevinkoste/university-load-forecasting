@@ -6,71 +6,53 @@ import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
 
+import utility_functions as fn
 
-def sine_fit(df,column,start,end):
+
+def sine_fit(tt, yy):
     """
-    Fits a sinusoid to evenly-spaced time series data
-    
-    df: DataFrame with datetime[ns] index
-    column: str name of column in question
-    start: int index location of first value in the impute range
-    end: int index location of last value in the impute range
-    Return fitting parameter 'fitfunc'
+    This is adapted from the fit_sin function from stackoverflow
+
+    Fits sinusoid to the input time sequence
+    Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
     """
-    y = df[column][start:end].values
-    t = np.arange(end-start)
-    
-    f = np.fft.fftfreq(len(t), (t[1]-t[0]))
-    Fy = abs(np.fft.fft(y))
-    
-    guess_freq = abs(f[np.argmax(Fy[1:])+1])
-    guess_amp = np.std(y) * 2.**0.5
-    guess_offset = np.mean(y)
+    tt = np.array(tt)
+    yy = np.array(yy)
+    ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
+    Fyy = abs(np.fft.fft(yy))
+    guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
+    guess_amp = np.std(yy) * 2.**0.5
+    guess_offset = np.mean(yy)
     guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
-    
-    def sine(x, A, w, p, c):  return A * np.sin(w*x + p) + c
-    
-    popt, pcov = optimize.curve_fit(sine, t, y, p0=guess)
+
+    def sinfunc(t, A, w, p, c):  return A * np.sin(w*t + p) + c
+    popt, pcov = optimize.curve_fit(sinfunc, tt, yy, p0=guess)
     A, w, p, c = popt
     f = w/(2.*np.pi)
-    fit_function = lambda x: A * np.sin(w*x + p) + c
-    
-    return {'fit':fit_function,'amp':A,'omega':w,'phase':p,'offset':c,'freq':f}
+    fit_func = lambda t: A * np.sin(w*t + p) + c
+    return {'fit':fit_func,'amp':A,'omega':w,'phase':p,'offset':c,'freq':f}
 
 
-def sine_impute(df_in,column):
+def sine_impute(series_in):
     """
     Imputes all gaps using a least-squares optimized sinusoidal fit function
-    TODO: figure out a more logical flow of the various gap functions...
-          remove the need for that 6... 
     
-    df_in: DataFrame to which the target column belongs
-    column: int index of column to be imputed
+    series_in: Series or column of DataFrame to to be imputed
     """
-    df_out = df_in.copy(deep=True)
-    gaps = column_gaps(df_in,df_in.columns[column],6)
-
+    import utility_functions as fn
+    series = series_in.copy(deep=True)
+    
+    gaps = fn.gaps(series)
+    
+    # iterate through list of gaps and fill each
     for i in gaps.index:
+        fit_data = series[gaps.start_int[i] - 3*gaps.length[i]:gaps.start_int[i]]
+        fit = fn.sine_fit(np.arange(len(fit_data)),fit_data.values)
 
-        data_start_index = gaps.start[i] - 2*gaps.length[i]-1
-        data_end_index = gaps.start[i]-1
-        impute_start_index = gaps.start[i]
-        impute_end_index = gaps.end[i]
-        # print(gaps.start[i])
-        # print(gaps.end[i])
-
-        x_start = 0
-        x_end = data_end_index - data_start_index
-        x_impute_start = x_end+1
-        x_impute_end = impute_end_index - data_start_index
-
-        fit_function = sine_fit(df_in,df_in.columns[column],data_start_index,data_end_index)
-        
-        imputed_values = fit_function['fit'](np.arange(x_impute_start,x_impute_end))
-        # print(imputed_values)
-
-        df_out.iloc[gaps.start[i]:gaps.end[i],[column]] = pd.DataFrame(imputed_values).values
-    return df_out
+        imputed_values = fit['fit'](np.arange(len(fit_data)+1,len(fit_data)+gaps.length[i]+1))
+        series[gaps.start_int[i]:gaps.end_int[i]] = imputed_values
+    
+    return series
 
 
 def add_hours_before(df_in,hours_before):
@@ -205,6 +187,7 @@ def gaps(series,**keyword_parameters):
     else:
         return pd.DataFrame(gaps_list)[['start_int','end_int','length','start','end']]
 
+    
 def limited_impute(series,limit,**keyword_parameters):
     """
     Returns Series with gaps shorter than the limit interpolated based on the method given
@@ -268,39 +251,134 @@ def mean_absolute_percentage_error(y_true, y_pred):
 # The following functions are not currently being used in any pipelines, but may be revisited
 # -------------------------------------------------------------------------------------------
 
+# def squared_sine_fit(tt, yy):
+#     """
+#     This is adapted from the fit_sin function
+#     Trying to add a squareness factor - this matches energy data more closely than pure sinusoid
 
-def gap_finder_broken(df_in,gap_length):
-    """
-    BROKEN, cannot handle gaps shorter than 1.5*gap+length
-    Returns a bool DataFrame indicating gaps longer than gap_length hours in df_in
-    
-    df: DataFrame to be checked, with datetime[ns] index
-    gap_length: int maximum allowable gap length in hours
-    """
-    fward = (df_in.notna()
-                  .rolling(gap_length,min_periods=1)
-                  .sum()
-                  .astype(bool)
-            )
-    
-    
-    bward = (df_in.iloc[::-1]
-                  .notna()
-                  .rolling(gap_length,min_periods=1)
-                  .sum()
-                  .iloc[::-1]
-                  .astype(bool)
-            )
-    
-    return fward & bward
+#     Fits sinusoid to the input time sequence
+#     Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
+#     """
+#     tt = np.array(tt)
+#     yy = np.array(yy)
+#     ff = np.fft.fftfreq(len(tt), (tt[1]-tt[0]))   # assume uniform spacing
+#     Fyy = abs(np.fft.fft(yy))
+#     guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
+#     guess_amp = np.std(yy) * 2.**0.5
+#     guess_offset = np.mean(yy)
+#     guess_squareness = 1
+#     guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_squareness, guess_offset])
+
+#     def sinfunc(t, A, w, p, m, c):  return A * np.sin(w*t + p)**m + c
+#     popt, pcov = optimize.curve_fit(sinfunc, tt, yy, p0=guess)
+#     A, w, p, m, c = popt
+#     f = w/(2.*np.pi)
+#     fit_func = lambda t: A * np.sin(w*t + p)**m + c
+#     return {'fit':fit_func,'amp':A,'omega':w,'phase':p,'squareness':m,'offset':c,'freq':f}
 
 
-def gap_finder_wshift(df_in,gap_length):
-    """
-    trying to fix short gap problem using bitwise operators.. failing
-    """
-    df = df_in.notna()
-    return (df | df.shift(-1) | df.shift(-2) | df.shift(-3)) & (df | df.shift(1) | df.shift(2) | df.shift(3))    
+
+
+# def sine_fit(series):
+#     """
+#     NEEDS TO BE CHANGED to take just a series
+#     Fits a sinusoid to evenly-spaced time series data
+    
+#     df: DataFrame with datetime[ns] index
+#     column: str name of column in question
+#     start: int index location of first value in the impute range
+#     end: int index location of last value in the impute range
+#     Return fitting parameter 'fitfunc'
+#     """
+#     y = series.values
+#     t = np.arange(len(series))
+    
+#     f = np.fft.fftfreq(len(t), (t[1]-t[0]))
+#     Fy = abs(np.fft.fft(y))
+    
+#     guess_freq = abs(f[np.argmax(Fy[1:])+1])
+#     guess_amp = np.std(y) * 2.**0.5
+#     guess_offset = np.mean(y)
+#     guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
+    
+#     def sine(x, A, w, p, c):  return A * np.sin(w*x + p) + c
+    
+#     popt, pcov = optimize.curve_fit(sine, t, y, p0=guess)
+#     A, w, p, c = popt
+#     f = w/(2.*np.pi)
+#     fit_function = lambda x: A * np.sin(w*x + p) + c
+    
+#     return {'fit':fit_function,'amp':A,'omega':w,'phase':p,'offset':c,'freq':f}
+
+
+
+# def sine_impute(df_in,column):
+#     """
+#     Imputes all gaps using a least-squares optimized sinusoidal fit function
+#     Old, works with series not df now 
+    
+#     df_in: DataFrame to which the target column belongs
+#     column: int index of column to be imputed
+#     """
+#     df_out = df_in.copy(deep=True)
+#     gaps = fn.gaps(series)
+
+#     for i in gaps.index:
+
+#         data_start_index = gaps.start[i] - 2*gaps.length[i]-1
+#         data_end_index = gaps.start[i]-1
+#         impute_start_index = gaps.start[i]
+#         impute_end_index = gaps.end[i]
+#         # print(gaps.start[i])
+#         # print(gaps.end[i])
+
+#         x_start = 0
+#         x_end = data_end_index - data_start_index
+#         x_impute_start = x_end+1
+#         x_impute_end = impute_end_index - data_start_index
+
+#         fit_function = sine_fit(df_in,df_in.columns[column],data_start_index,data_end_index)
+        
+#         imputed_values = fit_function['fit'](np.arange(x_impute_start,x_impute_end))
+#         # print(imputed_values)
+
+#         df_out.iloc[gaps.start[i]:gaps.end[i],[column]] = pd.DataFrame(imputed_values).values
+#     return df_out
+
+
+
+# def gap_finder_broken(df_in,gap_length):
+#     """
+#     BROKEN, cannot handle gaps shorter than 1.5*gap+length
+#     Returns a bool DataFrame indicating gaps longer than gap_length hours in df_in
+    
+#     df: DataFrame to be checked, with datetime[ns] index
+#     gap_length: int maximum allowable gap length in hours
+#     """
+#     fward = (df_in.notna()
+#                   .rolling(gap_length,min_periods=1)
+#                   .sum()
+#                   .astype(bool)
+#             )
+    
+    
+#     bward = (df_in.iloc[::-1]
+#                   .notna()
+#                   .rolling(gap_length,min_periods=1)
+#                   .sum()
+#                   .iloc[::-1]
+#                   .astype(bool)
+#             )
+    
+#     return fward & bward
+
+
+# def gap_finder_wshift(df_in,gap_length):
+#     """
+#     trying to fix short gap problem using bitwise operators.. failing
+#     """
+#     df = df_in.notna()
+#     return (df | df.shift(-1) | df.shift(-2) | df.shift(-3)) & (df | df.shift(1) | df.shift(2) | df.shift(3))    
     
 
     
