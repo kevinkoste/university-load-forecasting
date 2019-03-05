@@ -1,5 +1,4 @@
 # energy-model
-Predictive energy modeling in Python
 
 With accurate predictions of energy demand, Yale could save money by purchasing electricity  through competitive bids on the ISO-NE day-ahead market.
 
