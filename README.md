@@ -8,6 +8,6 @@ Predicting the energy demand of an individual building is notoriously difficult.
 
 The Office of Facilities has been collecting hourly electricity, chilled water, and steam data for almost five years. Until now, the data has mostly been used to identify mechanical system issues, assess energy efficiency initiatives, and bill departments for their energy consumption.
 
-Using machine learning algorithms, the historical data can be leveraged to predict day-ahead energy demand. The model is strengthened by the inclusion of powerful predictors like date and weather data.
+Using machine learning algorithms, the historical data can be leveraged to predict day-ahead electricity demand. This model is strengthened by the inclusion of powerful predictors like date and weather data.
 
-The scope of the energy model includes meter error identification, imputation of critical missing values, unsupervised clustering of buildings, weather & date feature engineering, and evaluation of several predictive models.
+The scope of the energy model includes meter error identification, imputation of missing values, clustering of buildings, weather & date feature engineering, and evaluation of several predictive models.
