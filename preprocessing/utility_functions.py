@@ -11,9 +11,9 @@ import utility_functions as fn
 
 def sine_fit(tt, yy):
     """
-    This is adapted from the fit_sin function from stackoverflow
-
     Fits sinusoid to the input time sequence
+    ** This is adapted from the fit_sin function on a stackoverflow answer
+    
     Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
     """
     tt = np.array(tt)
@@ -22,6 +22,7 @@ def sine_fit(tt, yy):
     Fyy = abs(np.fft.fft(yy))
     guess_freq = abs(ff[np.argmax(Fyy[1:])+1])   # excluding the zero frequency "peak", which is related to offset
     guess_amp = np.std(yy) * 2.**0.5
+#     guess_amp = np.ptp(yy)/2
     guess_offset = np.mean(yy)
     guess = np.array([guess_amp, 2.*np.pi*guess_freq, 0., guess_offset])
 
@@ -32,7 +33,6 @@ def sine_fit(tt, yy):
     fit_func = lambda t: A * np.sin(w*t + p) + c
     return {'fit':fit_func,'amp':A,'omega':w,'phase':p,'offset':c,'freq':f}
 
-
 def sine_impute(series_in):
     """
     Imputes all gaps using a least-squares optimized sinusoidal fit function
@@ -42,16 +42,21 @@ def sine_impute(series_in):
     import utility_functions as fn
     series = series_in.copy(deep=True)
     
+    # define dataframe of gap locations and lengths
     gaps = fn.gaps(series)
     
-    # iterate through list of gaps and fill each
+    # iterate through list of gaps and fill each one using the week of data prior to the gap
     for i in gaps.index:
-        fit_data = series[gaps.start_int[i] - 3*gaps.length[i]:gaps.start_int[i]]
-        fit = fn.sine_fit(np.arange(len(fit_data)),fit_data.values)
-
-        imputed_values = fit['fit'](np.arange(len(fit_data)+1,len(fit_data)+gaps.length[i]+1))
+        fit_data = series[gaps.start_int[i] - 24*7:gaps.start_int[i]]
+        
+        try:
+            fit = fn.sine_fit(np.arange(len(fit_data)),fit_data.values)
+            imputed_values = fit['fit'](np.arange(len(fit_data)+1,len(fit_data)+gaps.length[i]+1))
+        except:
+            imputed_values = np.full(gaps.length[i],np.median(fit_data.values))
+            
         series[gaps.start_int[i]:gaps.end_int[i]] = imputed_values
-    
+
     return series
 
 
@@ -247,9 +252,9 @@ def mean_absolute_percentage_error(y_true, y_pred):
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 
-# -------------------------------------------------------------------------------------------
-# The following functions are not currently being used in any pipelines, but may be revisited
-# -------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# The following functions are not currently being used, but may be revisited
+# ---------------------------------------------------------------------------
 
 # def squared_sine_fit(tt, yy):
 #     """
