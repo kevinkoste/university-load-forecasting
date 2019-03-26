@@ -15,6 +15,9 @@ The scope of this project includes meter error identification, imputation of mis
 The work is organized into several Jupyter Notebooks that make use of standard Python data science libraries. Here is a description of the files in each parent folder.
 
 Preprocessing: (3) notebooks for error identification and imputation of electricity, steam, chilled water, and weather data
+
 Data: (8) csv files for raw and processed electricity, steam, chilled water, and weather data
-Exploration: (1) notebook for the clustering analysis and (1) py module containing useful functions used throughout the project
+
+Exploration: (1) notebook for the clustering analysis and (1) py module containing useful recurring functions
+
 Prediction: (4) notebooks implementing and evaluating various machine learning algorithms
