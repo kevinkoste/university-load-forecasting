@@ -14,10 +14,11 @@ The scope of this project includes meter error identification, imputation of mis
 
 ### Contents
 
-**Preprocessing:** (3) notebooks for error identification and imputation of electricity, steam, chilled water, and weather data
+**Preprocessing:** Notebooks for error identification and imputation of electricity, steam, chilled water, and weather data
 
-**Data:** (8) csv files for raw and processed electricity, steam, chilled water, and weather data
+**Data:** csv files for raw and processed electricity, steam, chilled water, and weather data
 
-**Exploration:** (1) notebook for the clustering analysis and (1) py module containing useful recurring functions
+**Exploration:** notebook for the clustering analysis and a py module containing useful recurring functions
 
-**Prediction:** (4) notebooks implementing and evaluating various machine learning algorithms
+**Prediction:** notebooks implementing and evaluating various predictive models
+
