@@ -1,4 +1,4 @@
-# Load Forecasting at the University-scale
+# Load forecasting at the university-scale
 
 ### Summary
 
