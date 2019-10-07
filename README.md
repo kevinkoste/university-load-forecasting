@@ -27,11 +27,11 @@ I collaborated with Dr. Clayton Miller, director of the Building and Urban Data 
 ### Contents
 This repository is a collection of exploratory and experimental analytics notebooks, including scripts for meter error identification, imputation of missing values, load-shape clustering, weather & date feature engineering, and the evaluation of several forecasting strategies.
 
-**Preprocessing:** notebooks for error identification and imputation of electricity, steam, chilled water, and weather data
+**preprocessing/** notebooks for error identification and imputation of electricity, steam, chilled water, and weather data
 
-**Data:** raw and processed electricity, steam, chilled water, and weather data
+**data/** raw and processed electricity, steam, chilled water, and weather data
 
-**Exploration:** notebook for the clustering analysis and a .py module containing useful functions
+**exploration/** notebook for the clustering analysis and a .py module containing useful functions
 
-**Prediction:** notebooks implementing and evaluating various predictive models
+**prediction/** notebooks implementing and evaluating various predictive models
 
