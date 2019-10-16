@@ -12,7 +12,6 @@ import utility_functions as fn
 def sine_fit(tt, yy):
     """
     Fits sinusoid to the input time sequence
-    ** This is adapted from the fit_sin function on a stackoverflow answer
     
     Return fitting parameters "amp", "omega", "phase", "offset", "freq", "period" and "fitfunc"
     """
