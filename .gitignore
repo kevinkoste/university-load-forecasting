@@ -1,11 +1,8 @@
 # Specific files to ignore
 archive/
 
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
 
 # Distribution / packaging
 .Python
