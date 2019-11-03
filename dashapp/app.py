@@ -6,20 +6,36 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 
 import pandas as pd
+import datetime as dt
 
 # read and initialize data for plots
-data = pd.read_csv('../data/results/2019-10-29.csv',index_col=0,date_parser=pd.to_datetime)
-data = data.iloc[14:]
+date = dt.datetime.now().date()
+time = dt.datetime.now().hour
+
+results = pd.read_csv('../data/results/'+str(date)+'.csv', index_col=0, header=[0,1], date_parser=pd.to_datetime)
+data = results.iloc[14:]
 
 # generate figure to plot
-fig = make_subplots(
-    rows=1, cols=2, subplot_titles=('Aggregate', 'Cluster 1')
-)
-fig.add_trace(go.Scatter(x=data.index, y=data['aggregate_actual'].values), row=1, col=1)
-fig.add_trace(go.Scatter(x=data.index[:10], y=data['aggregate_sarimax'].values[:10]), row=1, col=1)
-fig.add_trace(go.Scatter(x=data.index, y=data['cluster1_actual'].values), row=1, col=2)
-fig.add_trace(go.Scatter(x=data.index[:10], y=data['cluster1_sarimax'].values[:10]), row=1, col=2)
+fig = make_subplots(rows=1, cols=2, subplot_titles=('Aggregate', 'Cluster 1'))
+
+fig.add_trace(go.Scatter(x=data.index[:time],
+                         y=data['aggregate','actual'].values[:time],
+                         hoverinfo='x+y'), row=1, col=1)
+
+fig.add_trace(go.Scatter(x=data.index,
+                         y=data['aggregate','sarimax'].values,
+                         mode='lines',hoverinfo='x+y'), row=1, col=1)
+
+fig.add_trace(go.Scatter(x=data.index[:time],
+                         y=data['cluster1','actual'].values[:time],
+                         hoverinfo='x+y'), row=1, col=2)
+
+fig.add_trace(go.Scatter(x=data.index,
+                         y=data['cluster1','sarimax'].values,
+                         mode='lines',hoverinfo='x+y'), row=1, col=2)
+
 fig.update_layout(showlegend=False)
+
 
 
 # initialize Dash app
@@ -45,7 +61,6 @@ app.layout = html.Div(style=styleDict, children=[
         figure=fig,
         config={
             'displaylogo': False,
-            # 'modeBarButtonsToRemove': ['pan2d', 'lasso2d'],
             'modeBarButtons': [['pan2d', 'zoom2d']],
             # 'displayModeBar':False
         },

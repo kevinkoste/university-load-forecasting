@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-def TrainSARIMAX(endog, exog, trend, seasonal):
+def TrainSARIMAX(endog, exog, trend, seasonal, maxiter=200):
     """
     endog(pd.Series): Series (usually corresponding to a cluster) of hourly indexed load data
     exog(pd.DataFrame): DataFrame of covariates if applicable
@@ -17,5 +17,5 @@ def TrainSARIMAX(endog, exog, trend, seasonal):
                     order=trend,
                     seasonal_order=seasonal,
                     enforce_stationarity=False)
-    model_fit = model.fit(disp=0,maxiter=100)
+    model_fit = model.fit(disp=0,maxiter=maxiter)
     return model_fit
