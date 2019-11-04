@@ -37,7 +37,6 @@ fig.add_trace(go.Scatter(x=data.index,
 fig.update_layout(showlegend=False)
 
 
-
 # initialize Dash app
 app = dash.Dash()
 
