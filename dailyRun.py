@@ -6,11 +6,14 @@ from src.processing.clustering import LoadShapeCluster
 from src.training.sarimax import DayAheadSARIMAX
 from src.training.mlp import DayAheadMLP
 
-# This script is designed to execute ONE (for now) day-ahead forecast given a set of parameters
+# This script executes a SARIMAX and an MLP day-ahead forecast for the current day,
+# and stores the results in the results folder
 
-# SARIMA hyperparameters
+# general parameters
 location = 'arizona'
 numClusters = 3
+
+# SARIMA hyperparameters
 trendParams = (0,0,0)
 seasonalParams = (1,0,0,24)
 maxiter = 20
@@ -21,6 +24,7 @@ epochs = 50
 activation = 'relu'
 optimizer='adam'
 loss='mse'
+
 
 # import preprocessed load and covariate data
 loads = pd.read_csv('data/processed/'+location+'-loads.csv',index_col=0,date_parser=pd.to_datetime)
@@ -67,7 +71,8 @@ for cluster in df.columns:
                              epochs=epochs,
                              activation=activation,
                              optimizer=optimizer,
-                             loss=loss)
+                             loss=loss,
+                             verbose=0)
     results[cluster,'mlp'] = y_pred_mlp
 
 results.to_csv('data/results/'+str(today)+'.csv')
