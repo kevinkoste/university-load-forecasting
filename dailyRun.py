@@ -6,7 +6,7 @@ from src.processing.clustering import LoadShapeCluster
 from src.training.sarimax import DayAheadSARIMAX
 from src.training.mlp import DayAheadMLP
 
-# This script executes a SARIMAX and an MLP day-ahead forecast for the current day,
+# This script executes SARIMAX and MLP day-ahead forecasts for the current day,
 # and stores the results in the results folder
 
 # general parameters
@@ -44,11 +44,12 @@ df = pd.DataFrame(data=loads.sum(axis=1), index=loads.index, columns=['aggregate
 for i in range(1,numClusters+1):
     df['cluster'+str(i)] = loads[[k for k in loads.columns if clusterMap[k]==i]].sum(axis=1)
     
+clusterNames = df.columns
 # generate MultiIndex to store results, initialize results df
-indexMulti = pd.MultiIndex.from_product([list(df.columns),['actual','sarimax','mlp']])
+indexMulti = pd.MultiIndex.from_product([list(clusterNames),['actual','sarimax','mlp']])
 results = pd.DataFrame(index=pd.date_range(start=testDate, freq='H', periods=38), columns=indexMulti)
 
-for cluster in df.columns:
+for cluster in clusterNames:
     # grab data for a single cluster, save the test data
     y = df[cluster].copy(deep=True)
     X = covariates.copy(deep=True)
@@ -74,5 +75,8 @@ for cluster in df.columns:
                              loss=loss,
                              verbose=0)
     results[cluster,'mlp'] = y_pred_mlp
-
-results.to_csv('data/results/'+str(today)+'.csv')
+    
+results['clustersum','actual'] = results[clusterNames].swaplevel(axis=1)['actual'].sum(axis=1)
+results['clustersum','sarimax'] = results[clusterNames].swaplevel(axis=1)['sarimax'].sum(axis=1)
+results['clustersum','mlp'] = results[clusterNames].swaplevel(axis=1)['mlp'].sum(axis=1)
+results.to_csv('data/forecasts/'+str(today)+'.csv')

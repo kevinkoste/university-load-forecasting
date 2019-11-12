@@ -12,7 +12,7 @@ import datetime as dt
 date = dt.datetime.now().date()
 time = dt.datetime.now().hour
 
-results = pd.read_csv('../data/results/'+str(date)+'.csv', index_col=0, header=[0,1], date_parser=pd.to_datetime)
+results = pd.read_csv('../data/forecasts/'+str(date)+'.csv', index_col=0, header=[0,1], date_parser=pd.to_datetime)
 data = results.iloc[14:]
 
 # generate figure to plot
@@ -20,7 +20,7 @@ fig = make_subplots(rows=1, cols=2, subplot_titles=('Aggregate', 'Cluster 1'))
 
 fig.add_trace(go.Scatter(x=data.index[:time],
                          y=data['aggregate','actual'].values[:time],
-                         hoverinfo='x+y'), row=1, col=1)
+                         mode='lines',hoverinfo='x+y'), row=1, col=1)
 
 fig.add_trace(go.Scatter(x=data.index,
                          y=data['aggregate','sarimax'].values,
@@ -28,7 +28,7 @@ fig.add_trace(go.Scatter(x=data.index,
 
 fig.add_trace(go.Scatter(x=data.index[:time],
                          y=data['cluster1','actual'].values[:time],
-                         hoverinfo='x+y'), row=1, col=2)
+                         mode='lines',hoverinfo='x+y'), row=1, col=2)
 
 fig.add_trace(go.Scatter(x=data.index,
                          y=data['cluster1','sarimax'].values,
@@ -63,44 +63,17 @@ app.layout = html.Div(style=styleDict, children=[
             'modeBarButtons': [['pan2d', 'zoom2d']],
             # 'displayModeBar':False
         },
+    ),
+    dcc.Graph(
+        id='example-graph-2',
+        figure={
+            'data': [
+                {'x': [1, 2, 3], 'y': [4, 1, 2], 'type': 'bar', 'name': 'SF'},
+                {'x': [1, 2, 3], 'y': [2, 4, 5], 'type': 'bar', 'name': u'Montréal'},
+            ],
+        }
     )
 ])
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-# storing old graph implementation
-
-# dcc.Graph(
-#     id='Graph1',
-#     style={'width': 600},
-#     config={
-#         'displaylogo':False,
-#         # 'modeBarButtonsToRemove': ['pan2d', 'lasso2d'],
-#         'modeBarButtons': [['pan2d','zoom2d']],
-#         # 'displayModeBar':False
-#     },
-#     figure=go.Figure(
-#         data=[
-#             go.Scatter(
-#                 x=X_index,
-#                 y=y_actual,
-#                 name='Actual',
-#             ),
-#             go.Scatter(
-#                 x=X_index,
-#                 y=y_sarimax,
-#                 name='SARIMAX Forecast',
-#             ),
-#         ],
-#         layout=go.Layout(
-#             title='Day Ahead Forecasted Demand',
-#             showlegend=True,
-#             legend=go.layout.Legend(
-#                 x=0.8,
-#                 y=0.1
-#             ),
-#             margin=go.layout.Margin(l=20, r=20, t=40, b=20)
-#         )
-#     )
-# )
