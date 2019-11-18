@@ -5,5 +5,6 @@ pandas==0.23.4
 scikit-learn==0.20.1
 scipy==1.1.0
 statsmodels==0.9.0
-
-dash
+dash==1.5.1
+dash-core-components==1.4.0
+dash-html-components==1.0.1
