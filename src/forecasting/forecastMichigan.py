@@ -9,7 +9,6 @@ from src.training.mlp import DayAheadMLP
 # This script executes SARIMAX and MLP day-ahead forecasts for the current day,
 # and stores the results in the results folder
 
-# general parameters
 location = 'michigan'
 numClusters = 3
 
@@ -55,24 +54,26 @@ for cluster in clusterNames:
     results[cluster,'actual'] = y.loc[(testDate<=y.index) & (y.index<testDate+pd.Timedelta(hours=38))]
 
     # use DayAheadSARIMAX helper function to train a fresh model and make a day-ahead forecast
-    y_pred_sarimax = DayAheadSARIMAX(endog=y,
-                                     exog=X,
-                                     date=testDate,
-                                     trend=trendParams,
-                                     seasonal=seasonalParams,
-                                     maxiter=maxiter)
+    y_pred_sarimax = DayAheadSARIMAX(
+        endog=y,
+        exog=X,
+        date=testDate,
+        trend=trendParams,
+        seasonal=seasonalParams,
+        maxiter=maxiter)
     results[cluster,'sarimax'] = y_pred_sarimax
     
     # use DayAheadMLP helper function to train a fresh model and make a day-ahead forecast
-    y_pred_mlp = DayAheadMLP(endog=y,
-                             exog=X,
-                             date=testDate,
-                             lags=lags,
-                             epochs=epochs,
-                             activation=activation,
-                             optimizer=optimizer,
-                             loss=loss,
-                             verbose=0)
+    y_pred_mlp = DayAheadMLP(
+        endog=y,
+        exog=X,
+        date=testDate,
+        lags=lags,
+        epochs=epochs,
+        activation=activation,
+        optimizer=optimizer,
+        loss=loss,
+        verbose=0)
     results[cluster,'mlp'] = y_pred_mlp
 
 # calculate the cluster sum results here
