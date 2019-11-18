@@ -10,21 +10,20 @@ from src.training.mlp import DayAheadMLP
 # and stores the results in the results folder
 
 # general parameters
-location = 'arizona'
+location = 'newJersey'
 numClusters = 3
 
 # SARIMA hyperparameters
 trendParams = (0,0,0)
 seasonalParams = (1,0,0,24)
-maxiter = 20
+maxiter = 10
 
 # MLP hyperparameters
 lags = range(1,169)
-epochs = 50
+epochs = 10
 activation = 'relu'
 optimizer='adam'
 loss='mse'
-
 
 # import preprocessed load and covariate data
 loads = pd.read_csv('data/processed/'+location+'-loads.csv',index_col=0,date_parser=pd.to_datetime)
@@ -44,9 +43,9 @@ df = pd.DataFrame(data=loads.sum(axis=1), index=loads.index, columns=['aggregate
 for i in range(1,numClusters+1):
     df['cluster'+str(i)] = loads[[k for k in loads.columns if clusterMap[k]==i]].sum(axis=1)
     
-clusterNames = df.columns
 # generate MultiIndex to store results, initialize results df
-indexMulti = pd.MultiIndex.from_product([list(clusterNames),['actual','sarimax','mlp']])
+clusterNames = list(df.columns)
+indexMulti = pd.MultiIndex.from_product([clusterNames,['actual','sarimax','mlp']])
 results = pd.DataFrame(index=pd.date_range(start=testDate, freq='H', periods=38), columns=indexMulti)
 
 for cluster in clusterNames:
@@ -75,8 +74,10 @@ for cluster in clusterNames:
                              loss=loss,
                              verbose=0)
     results[cluster,'mlp'] = y_pred_mlp
-    
+
+# calculate the cluster sum results here
+clusterNames.remove('aggregate')
 results['clustersum','actual'] = results[clusterNames].swaplevel(axis=1)['actual'].sum(axis=1)
 results['clustersum','sarimax'] = results[clusterNames].swaplevel(axis=1)['sarimax'].sum(axis=1)
 results['clustersum','mlp'] = results[clusterNames].swaplevel(axis=1)['mlp'].sum(axis=1)
-results.to_csv('data/forecasts/'+str(today)+'.csv')
+results.to_csv('data/forecasts/'+location+'/'+str(today)+'.csv')
