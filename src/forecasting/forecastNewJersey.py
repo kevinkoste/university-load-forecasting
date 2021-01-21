@@ -16,16 +16,17 @@ numClusters = 3
 # SARIMA hyperparameters
 trendParams = (0,0,0)
 seasonalParams = (1,0,0,24)
-maxiter = 10
+maxiter = 50
 
 # MLP hyperparameters
 lags = range(1,169)
-epochs = 10
+epochs = 50
 activation = 'relu'
 optimizer='adam'
 loss='mse'
 
 # import preprocessed load and covariate data
+print(f'\nReading in data for {location}\n')
 loads = pd.read_csv('data/processed/'+location+'-loads.csv',index_col=0,date_parser=pd.to_datetime)
 covariates = pd.read_csv('data/processed/'+location+'-covariates.csv',index_col=0,date_parser=pd.to_datetime)
 
@@ -55,6 +56,7 @@ for cluster in clusterNames:
     results[cluster,'actual'] = y.loc[(testDate<=y.index) & (y.index<testDate+pd.Timedelta(hours=38))]
 
     # use DayAheadSARIMAX helper function to train a fresh model and make a day-ahead forecast
+    print(f'\nStarting SARIMA forecast for {location} {cluster}\n')
     y_pred_sarimax = DayAheadSARIMAX(
         endog=y,
         exog=X,
@@ -65,6 +67,7 @@ for cluster in clusterNames:
     results[cluster,'sarimax'] = y_pred_sarimax
     
     # use DayAheadMLP helper function to train a fresh model and make a day-ahead forecast
+    print(f'\nStarting MLP forecast for {location} {cluster}\n')
     y_pred_mlp = DayAheadMLP(
         endog=y,
         exog=X,
@@ -77,9 +80,11 @@ for cluster in clusterNames:
         verbose=0)
     results[cluster,'mlp'] = y_pred_mlp
 
-# calculate the cluster sum results here
+# calculate cluster sum results here, fancy multiindexing stuff
 clusterNames.remove('aggregate')
 results['clustersum','actual'] = results[clusterNames].swaplevel(axis=1)['actual'].sum(axis=1)
 results['clustersum','sarimax'] = results[clusterNames].swaplevel(axis=1)['sarimax'].sum(axis=1)
 results['clustersum','mlp'] = results[clusterNames].swaplevel(axis=1)['mlp'].sum(axis=1)
+
+print(f'\nWriting results for {location}\n')
 results.to_csv('data/forecasts/'+location+'/'+str(today)+'.csv')

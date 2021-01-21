@@ -53,7 +53,6 @@ for cluster in clusters:
                 layout={
                     'margin':{'t':40,'b':40,'l':40,'r':40},
                     'yaxis':{
-                        # 'title':'Electricity Load [MW]',
                         'ticks':'outside',
                         'ticksuffix':' MW',
                         'fixedrange':True,
@@ -80,63 +79,84 @@ for cluster in clusters:
         style={'width':'50%', 'display':'inline-block', 'padding-top':20, 'vertical-align':'top'},
     )
 
-
-# generate primary (aggregate load) figure
-aggfig = go.Figure(
-    data=[
-        LoadShapePlot('Actual', data['aggregate','actual'].iloc[:time]),
-        LoadShapePlot('Aggregate SARIMAX', data['aggregate','sarimax']),
-        LoadShapePlot('Aggregate MLP', data['aggregate','mlp'])
-    ],
-    layout={
-        'margin':{'t':20,'b':20,'l':40,'r':30},
-        'yaxis':{'title':'Electricity Load [MW]','ticks':'outside'},
-        'xaxis':{'ticks':'outside'},
-        'legend':{'x':0.72,'y':0.05}
-    }
+aggDiv = html.Div(children=[
+    dcc.Graph(
+        id='aggregateGraph',
+        style={'width':'60%','display':'inline-block','vertical-align':'top'},
+        config={
+            'displaylogo': False,
+            'showTips': False,
+            'scrollZoom': False,
+            'displayModeBar':False
+        },
+        figure = go.Figure(
+            data=[
+                LoadShapePlot('Actual', data['aggregate','actual'].iloc[:time]),
+                LoadShapePlot('Aggregate SARIMAX', data['aggregate','sarimax']),
+                LoadShapePlot('Aggregate MLP', data['aggregate','mlp'])
+            ],
+            layout={
+                'margin':{'t':20,'b':40,'l':40,'r':40},
+                'yaxis':{
+                    'ticks':'outside',
+                    'ticksuffix':' MW',
+                    'fixedrange':True,
+                    'hoverformat':'.2f',
+                },
+                'xaxis':{
+                    'ticks':'outside',
+                    'nticks':8,
+                    'fixedrange':True,
+                    'tickformat':'%-I %p',
+                },
+                'legend':{'x':0.71,'y':0.05},
+            }
+        )
+    ),
+    dcc.Markdown(
+        id='aggregateMarkdown',
+        style={'width':'40%', 'display':'inline-block','vertical-align':'top'},
+        children=f"""
+            The plot shows the aggregate load of all buildings on the University of Arizona campus.
+            The legend describes each series.
+            Here are the mean absolute percentage error (MAPE) for each forecasting strategy:
+            * Aggregate SARIMAX: {mapes['aggregate']['sarimax']}
+            * Aggregate MLP: {mapes['aggregate']['mlp']}
+            * Cluster Sum SARIMAX: {mapes['clustersum']['sarimax']}
+            * Cluster Sum MLP: {mapes['clustersum']['mlp']}
+            """,
+    )],
+    style={'display':'inline-block', 'padding-top':20, 'vertical-align':'top'},
 )
 
-# text to accompany aggregate plot
-aggtext = f"""
-The plot shows the aggregate load of all buildings on the University of Arizona campus.
-The legend describes each series.
-Here are the mean absolute percentage error (MAPE) for each forecasting strategy:
-* Aggregate SARIMAX: {mapes['aggregate']['sarimax']}
-* Aggregate MLP: {mapes['aggregate']['mlp']}
-* Cluster Sum SARIMAX: {mapes['clustersum']['sarimax']}
-* Cluster Sum MLP: {mapes['clustersum']['mlp']}
-"""
 
 # initialize Dash app and include external css
 app = dash.Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
 app.layout = html.Div(children=[
-    html.H1(
-        children='University Load Forecasting:',
-        style={'textAlign':'center'}
-    ),
-    html.Div(
-        children="Applications of Deep Learning and Load-Shape Clustering",
-        style={'textAlign':'center','padding-bottom':20}
-    ),
+
     html.Div(children=[
-        dcc.Graph(
-            id='AggGraph',
-            figure=aggfig,
-            style={'width':'60%', 'height':'40%', 'display':'inline-block'},
-            config={
-                'displaylogo': False,
-                'showTips': False,
-                'scrollZoom': False,
-                'displayModeBar':False
-            },
+        html.Div(
+            id='titleHeader',
+            style={'width':'50%','display':'inline-block'},
+            children=[
+                html.H1('Load Forecasting'),
+                html.H4('Applications of Deep Learning and Load-Shape Clustering'),
+            ],
         ),
-        dcc.Markdown(
-            id='AggText',
-            children=aggtext,
-            style={'width':'40%', 'display':'inline-block', 'padding-top':20, 'vertical-align':'top'}
+        html.Div(
+            id='campusHeader',
+            style={'width':'50%','display':'inline-block'},
+            children=[
+                html.H1(f'{location}'),
+                html.H4(f'Metadata about {location}'),
+            ],
         )
     ]),
+
+    html.Div(
+        children=aggDiv,
+    ),
 
     html.Div(
         children=[clusterDivs[cluster] for cluster in clusters]
