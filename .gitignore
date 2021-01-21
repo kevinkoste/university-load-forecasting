@@ -1,5 +1,5 @@
 # Specific files to ignore
-# archive/
+archive
 .DS_Store
 data/forecasts/
 
